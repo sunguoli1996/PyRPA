@@ -5,6 +5,8 @@ import datetime as dt
 import re
 import sys
 import time
+
+import pydirectinput
 import win32api
 import xlrd
 import os
@@ -187,7 +189,20 @@ def Analysis(PicName, location):
             pyperclip.copy(strtemp)
             # pyautogui.typewrite(str(NowRowValue[local]), interval=0.1)
         elif NowRowKey[local] == '按键':
-            pyautogui.press(str(NowRowValue[local]))
+            # pyautogui.press(str(NowRowValue[local]))
+            key = str(NowRowValue[local])
+            mylog(f"按键: {key}")
+            pydirectinput.keyDown(key)
+            time.sleep(0.1)  # 增加按键按下和释放之间的延迟
+            pydirectinput.keyUp(key)
+        elif NowRowKey[local] == '按下':
+            key = str(NowRowValue[local])
+            mylog(f"按下: {key}")
+            pydirectinput.keyDown(key)
+        elif NowRowKey[local] == '释放':
+            key = str(NowRowValue[local])
+            mylog(f"释放: {key}")
+            pydirectinput.keyUp(key)
         elif NowRowKey[local] == '滚动':
             pyautogui.scroll(int(NowRowValue[local]))
         elif NowRowKey[local] == '滑动':
@@ -275,7 +290,12 @@ def FindPicAndClick(PicName, timeout, outmethod, interval):
     ImgPath = (WorkPath + '\\' + PicName)
     if PicName != '' and os.path.exists(ImgPath) is True and running == 1:
         mylog(ImgPath, '图片有效')
-        location = pyautogui.locateCenterOnScreen(ImgPath, confidence=0.9)
+        location = None
+        try:
+            location = pyautogui.locateCenterOnScreen(ImgPath, confidence=0.8)
+        except pyautogui.ImageNotFoundException as e:
+            mylog(f"Error: {e}")
+            location = None
         ViewLog = True
         if location is not None:
             mylog(ImgPath, 'location is not None, Quick run')
@@ -287,7 +307,11 @@ def FindPicAndClick(PicName, timeout, outmethod, interval):
                     mylog(ImgPath, 'is not appear,waiting..(timeout > 0)')
                     ViewLog = False
 
-                location = pyautogui.locateCenterOnScreen(ImgPath, confidence=0.9)
+                try:
+                    location = pyautogui.locateCenterOnScreen(ImgPath, confidence=0.8)
+                except pyautogui.ImageNotFoundException as e:
+                    mylog(f"Error: {e}")
+                    location = None
                 time.sleep(interval)
                 if time.time() - BeginTime > timeout:
                     mylog(ImgPath, 'waiting timeout !!!!')
@@ -303,7 +327,7 @@ def FindPicAndClick(PicName, timeout, outmethod, interval):
                     mylog(ImgPath, 'timeout = -1, is not appear,waiting..(timeout = -1)')
                     ViewLog = False
 
-                location = pyautogui.locateCenterOnScreen(ImgPath, confidence=0.9)
+                location = pyautogui.locateCenterOnScreen(ImgPath, confidence=0.8)
                 time.sleep(interval)
 
             mylog(ImgPath, 'appear,waiting succecs,run')
@@ -839,15 +863,28 @@ def WriteIcon():
 #  @ 备注：因为控制台的关闭事件不好捕获，直接禁用掉
 #  @      只允许使用主窗体的关闭来退出程序 在关闭事件中清除临时文件
 #  @ 没有控制台不要使用
+# def DisableCloseButton():
+#     # pass
+#     h = win32console.GetConsoleWindow()
+#     if h is not None:
+#         wnd = win32ui.CreateWindowFromHandle(h)
+#         if wnd is not None:
+#             menu = wnd.GetSystemMenu()
+#             menu.DeleteMenu(win32con.SC_CLOSE, win32con.MF_BYCOMMAND)
+# autoruntaskdir = ''
+
 def DisableCloseButton():
-    # pass
     h = win32console.GetConsoleWindow()
     if h is not None:
-        wnd = win32ui.CreateWindowFromHandle(h)
-        if wnd is not None:
-            menu = wnd.GetSystemMenu()
-            menu.DeleteMenu(win32con.SC_CLOSE, win32con.MF_BYCOMMAND)
-autoruntaskdir = ''
+        try:
+            wnd = win32ui.CreateWindowFromHandle(h)
+            if wnd is not None:
+                menu = wnd.GetSystemMenu()
+                menu.DeleteMenu(win32con.SC_CLOSE, win32con.MF_BYCOMMAND)
+        except win32ui.error as e:
+            mylog(f"Error creating window from handle: {e}")
+    else:
+        mylog("Console window handle is None, cannot disable close button.")
 
 
 #  @ 功能：全局初始化
